@@ -11,8 +11,14 @@ Production-ready agents, skills, hooks, commands, rules，適用於 Python 3.11�
 
 ## 安裝指南
 
-1. 複製此儲存庫
-2. 進入此儲存庫目錄
+1. 複製此 Repo
+```bash
+git clone git@gltw.6633663.com:ai/everything-claude-code-aimate.git
+```
+2. 進入此 Repo 目錄
+```bash
+cd ./everything-claude-code-aimate
+```
 3. 在同一個終端機中，開啟 claude code
 4. 使用 `/plugin` 開啟外掛程式設定
 5. 按右方向鍵 2 次移動到 "Marketplaces" 標籤
@@ -22,17 +28,12 @@ Production-ready agents, skills, hooks, commands, rules，適用於 Python 3.11�
 9. 退出 claude code
 10. 再次進入 claude code，如果看到 "SessionStart:startup hook succeeded" 表示安裝成功
 
-對於 MacOS 或 Linux 使用者：
-mgrep 是 ripgrep/grep 的重大改進。透過外掛程式市集安裝後，即可支援本地搜尋和網頁搜尋。
+### 對於 MacOS 或 Linux 使用者：
+mgrep 是 ripgrep/grep 的重大改進。可減少50%以上的token使用。
 
 11. 再次新增 Marketplace，這次新增 "https://github.com/mixedbread-ai/mgrep "
-12. 選擇 "Mixedbred-Grep"
-
-直接使用範例：
-```bash
-mgrep "function handleSubmit"  # 本地搜尋
-mgrep --web "Next.js 15 app router changes"  # 網頁搜尋
-```
+12. 選擇 "Mixedbred-Grep" 即可安裝
+13. 重新開啟 claude code
 
 ---
 
