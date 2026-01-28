@@ -1,8 +1,9 @@
 {
   "name": "everything-claude-code",
+  "version": "1.0.0",
   "owner": {
-    "name": "Affaan Mustafa",
-    "email": "affaan@example.com"
+    "name": "Affaan Mustafa, Modified by AIMate",
+    "email": "affaan@example.com, developer@aimate.am"
   },
   "metadata": {
     "description": "Battle-tested Claude Code configurations from an Anthropic hackathon winner"

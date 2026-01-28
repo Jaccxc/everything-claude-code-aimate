@@ -1,9 +1,10 @@
 {
-  "name": "everything-claude-code",
+  "name": "everything-claude-code-aimate",
+  "version": "1.0.0",
   "description": "Complete collection of battle-tested Claude Code configs from an Anthropic hackathon winner - agents, skills, hooks, commands, and rules evolved over 10+ months of intensive daily use",
   "author": {
-    "name": "Affaan Mustafa",
-    "url": "https://x.com/affaanmustafa"
+    "name": "Affaan Mustafa, Modified by AIMate",
+    "email": "affaan@example.com, developer@aimate.am"
   },
   "homepage": "https://github.com/affaan-m/everything-claude-code",
   "repository": "https://github.com/affaan-m/everything-claude-code",
@@ -22,8 +23,18 @@
     "automation",
     "best-practices"
   ],
-  "commands": "./commands",
-  "skills": "./skills",
-  "agents": "./agents",
-  "hooks": "./hooks/hooks.json"
+  "commands": ["./commands/"],
+  "skills": ["./skills/"],
+  "agents": [
+    "./agents/architect.md",
+    "./agents/build-error-resolver.md",
+    "./agents/code-reviewer.md",
+    "./agents/database-reviewer.md",
+    "./agents/doc-updater.md",
+    "./agents/e2e-runner.md",
+    "./agents/planner.md",
+    "./agents/refactor-cleaner.md",
+    "./agents/security-reviewer.md",
+    "./agents/tdd-guide.md"
+  ]
 }

@@ -237,7 +237,7 @@ poetry run ruff format .
 poetry run uvicorn app.main:app --reload
 
 # 執行資料庫遷移
-alembic upgrade head
+poetry run alembic upgrade head
 ```
 
 ---
