@@ -9,7 +9,33 @@
 
 Production-ready agents, skills, hooks, commands, rules，適用於 Python 3.11、FastAPI、Pydantic、SQLAlchemy、PostgreSQL 開發環境。
 
+## 安裝指南
+
+1. 複製此儲存庫
+2. 進入此儲存庫目錄
+3. 在同一個終端機中，開啟 claude code
+4. 使用 `/plugin` 開啟外掛程式設定
+5. 按右方向鍵 2 次移動到 "Marketplaces" 標籤
+6. 選擇 "+ Add Marketplace"
+7. 輸入 "./"
+8. 選擇 "everything-claude-code-aimate" 即可安裝
+9. 退出 claude code
+10. 再次進入 claude code，如果看到 "SessionStart:startup hook succeeded" 表示安裝成功
+
+對於 MacOS 或 Linux 使用者：
+mgrep 是 ripgrep/grep 的重大改進。透過外掛程式市集安裝後，即可支援本地搜尋和網頁搜尋。
+
+11. 再次新增 Marketplace，這次新增 "https://github.com/mixedbread-ai/mgrep "
+12. 選擇 "Mixedbred-Grep"
+
+直接使用範例：
+```bash
+mgrep "function handleSubmit"  # 本地搜尋
+mgrep --web "Next.js 15 app router changes"  # 網頁搜尋
+```
+
 ---
+
 
 ## 技術棧
 
@@ -129,33 +155,6 @@ async def get_user(user_id: str) -> AIMateAPIResponse[User]:
 async def get_dashboard() -> VbenResponse[DashboardData]:
     return VbenResponse(code=0, message="ok", data=data)
 ```
-
----
-
-## 安裝
-
-### 手動安裝
-
-```bash
-# Clone repo
-git clone <repo-url> everything-claude-code-aimate
-
-# 複製 agents
-cp everything-claude-code-aimate/agents/*.md ~/.claude/agents/
-
-# 複製 rules
-cp everything-claude-code-aimate/rules/*.md ~/.claude/rules/
-
-# 複製 commands
-cp everything-claude-code-aimate/commands/*.md ~/.claude/commands/
-
-# 複製 skills
-cp -r everything-claude-code-aimate/skills/* ~/.claude/skills/
-```
-
-### 設定 Hooks
-
-將 `hooks/hooks.json` 的內容複製到你的 `~/.claude/settings.json`。
 
 ---
 
