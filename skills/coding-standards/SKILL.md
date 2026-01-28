@@ -1,11 +1,11 @@
 ---
 name: coding-standards
-description: Universal coding standards, best practices, and patterns for TypeScript, JavaScript, React, and Node.js development.
+description: Universal coding standards, best practices, and patterns for Python, FastAPI, Pydantic, and SQLAlchemy development.
 ---
 
 # Coding Standards & Best Practices
 
-Universal coding standards applicable across all projects.
+Universal coding standards applicable across all AIMate Python projects.
 
 ## Code Quality Principles
 
@@ -13,7 +13,7 @@ Universal coding standards applicable across all projects.
 - Code is read more than written
 - Clear variable and function names
 - Self-documenting code preferred over comments
-- Consistent formatting
+- Consistent formatting (ruff + black via poetry run)
 
 ### 2. KISS (Keep It Simple, Stupid)
 - Simplest solution that works
@@ -23,7 +23,7 @@ Universal coding standards applicable across all projects.
 
 ### 3. DRY (Don't Repeat Yourself)
 - Extract common logic into functions
-- Create reusable components
+- Create reusable services
 - Share utilities across modules
 - Avoid copy-paste programming
 
@@ -33,272 +33,220 @@ Universal coding standards applicable across all projects.
 - Add complexity only when required
 - Start simple, refactor when needed
 
-## TypeScript/JavaScript Standards
+## Python Standards
+
+### Modern Type Hints (REQUIRED)
+
+```python
+# ✅ CORRECT: Modern Python 3.10+ syntax
+name: str | None = None
+items: list[str] = []
+mapping: dict[str, int] = {}
+callback: Callable[[str], int] | None = None
+
+# ❌ WRONG: Legacy typing module
+from typing import Optional, List, Dict, Callable
+name: Optional[str] = None
+items: List[str] = []
+mapping: Dict[str, int] = {}
+```
 
 ### Variable Naming
 
-```typescript
-// ✅ GOOD: Descriptive names
-const marketSearchQuery = 'election'
-const isUserAuthenticated = true
-const totalRevenue = 1000
+```python
+# ✅ GOOD: Descriptive names (snake_case)
+market_search_query = "election"
+is_user_authenticated = True
+total_revenue = 1000.0
 
-// ❌ BAD: Unclear names
-const q = 'election'
-const flag = true
-const x = 1000
+# ❌ BAD: Unclear names
+q = "election"
+flag = True
+x = 1000
 ```
 
 ### Function Naming
 
-```typescript
-// ✅ GOOD: Verb-noun pattern
-async function fetchMarketData(marketId: string) { }
-function calculateSimilarity(a: number[], b: number[]) { }
-function isValidEmail(email: string): boolean { }
+```python
+# ✅ GOOD: Verb-noun pattern (snake_case)
+async def fetch_market_data(market_id: str) -> Market:
+    ...
 
-// ❌ BAD: Unclear or noun-only
-async function market(id: string) { }
-function similarity(a, b) { }
-function email(e) { }
+def calculate_similarity(vec_a: list[float], vec_b: list[float]) -> float:
+    ...
+
+def is_valid_email(email: str) -> bool:
+    ...
+
+# ❌ BAD: Unclear or noun-only
+async def market(id):
+    ...
+
+def similarity(a, b):
+    ...
 ```
 
-### Immutability Pattern (CRITICAL)
+### Pydantic Models (REQUIRED for all data)
 
-```typescript
-// ✅ ALWAYS use spread operator
-const updatedUser = {
-  ...user,
-  name: 'New Name'
-}
+```python
+from pydantic import BaseModel, Field
 
-const updatedArray = [...items, newItem]
+class CreateUserInput(BaseModel):
+    email: str
+    name: str = Field(min_length=1, max_length=100)
+    age: int | None = None
+    tags: list[str] = []
+    metadata: dict[str, str] = {}
 
-// ❌ NEVER mutate directly
-user.name = 'New Name'  // BAD
-items.push(newItem)     // BAD
+class User(BaseModel):
+    id: str
+    email: str
+    name: str
+    created_at: datetime
 ```
 
-### Error Handling
+### Error Handling with ServiceError
 
-```typescript
-// ✅ GOOD: Comprehensive error handling
-async function fetchData(url: string) {
-  try {
-    const response = await fetch(url)
+```python
+from fastapi import status
+from app.exceptions import ServiceError
+from app.contracts import AIMateErrorCode
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-    }
-
-    return await response.json()
-  } catch (error) {
-    console.error('Fetch failed:', error)
-    throw new Error('Failed to fetch data')
-  }
-}
-
-// ❌ BAD: No error handling
-async function fetchData(url) {
-  const response = await fetch(url)
-  return response.json()
-}
+async def get_user(user_id: str) -> User:
+    try:
+        user = await user_repo.find_by_id(user_id)
+    except DatabaseError as e:
+        logger.exception(f"Database error: {e}")
+        raise ServiceError(
+            message="Database error",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            code=AIMateErrorCode.INTERNAL_ERROR,
+        )
+    
+    if not user:
+        raise ServiceError(
+            message=f"User {user_id} not found",
+            status_code=status.HTTP_404_NOT_FOUND,
+            code=AIMateErrorCode.NOT_FOUND,
+        )
+    return user
 ```
 
 ### Async/Await Best Practices
 
-```typescript
-// ✅ GOOD: Parallel execution when possible
-const [users, markets, stats] = await Promise.all([
-  fetchUsers(),
-  fetchMarkets(),
-  fetchStats()
-])
+```python
+import asyncio
 
-// ❌ BAD: Sequential when unnecessary
-const users = await fetchUsers()
-const markets = await fetchMarkets()
-const stats = await fetchStats()
+# ✅ GOOD: Parallel execution when possible
+users, markets, stats = await asyncio.gather(
+    fetch_users(),
+    fetch_markets(),
+    fetch_stats()
+)
+
+# ❌ BAD: Sequential when unnecessary
+users = await fetch_users()
+markets = await fetch_markets()
+stats = await fetch_stats()
 ```
 
-### Type Safety
+## FastAPI Standards
 
-```typescript
-// ✅ GOOD: Proper types
-interface Market {
-  id: string
-  name: string
-  status: 'active' | 'resolved' | 'closed'
-  created_at: Date
-}
+### Router with ServiceError Pattern
 
-function getMarket(id: string): Promise<Market> {
-  // Implementation
-}
+```python
+from fastapi import APIRouter, Depends, status
+from app.exceptions import ServiceError
+from app.contracts import AIMateErrorCode, VbenResponse
 
-// ❌ BAD: Using 'any'
-function getMarket(id: any): Promise<any> {
-  // Implementation
-}
+router = APIRouter(prefix="/api/users", tags=["users"])
+
+@router.get("/{user_id}", response_model=VbenResponse[User])
+async def get_user(
+    user_id: str,
+    service: UserService = Depends(get_user_service)
+) -> VbenResponse[User]:
+    user = await service.get_by_id(user_id)
+    if not user:
+        raise ServiceError(
+            message=f"User {user_id} not found",
+            status_code=status.HTTP_404_NOT_FOUND,
+            code=AIMateErrorCode.NOT_FOUND,
+        )
+    return VbenResponse(code=0, message="ok", data=user)
 ```
 
-## React Best Practices
+### Dependency Injection
 
-### Component Structure
+```python
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
-```typescript
-// ✅ GOOD: Functional component with types
-interface ButtonProps {
-  children: React.ReactNode
-  onClick: () => void
-  disabled?: boolean
-  variant?: 'primary' | 'secondary'
-}
+async def get_db() -> AsyncSession:
+    async with async_session_maker() as session:
+        yield session
 
-export function Button({
-  children,
-  onClick,
-  disabled = false,
-  variant = 'primary'
-}: ButtonProps) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`btn btn-${variant}`}
-    >
-      {children}
-    </button>
-  )
-}
-
-// ❌ BAD: No types, unclear structure
-export function Button(props) {
-  return <button onClick={props.onClick}>{props.children}</button>
-}
+async def get_user_service(
+    db: AsyncSession = Depends(get_db)
+) -> UserService:
+    return UserService(UserRepository(db))
 ```
 
-### Custom Hooks
+## SQLAlchemy Standards
 
-```typescript
-// ✅ GOOD: Reusable custom hook
-export function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value)
+### Model Definition
 
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value)
-    }, delay)
+```python
+from sqlalchemy import String, Integer, DateTime, func
+from sqlalchemy.orm import Mapped, mapped_column
+from app.database import Base
 
-    return () => clearTimeout(handler)
-  }, [value, delay])
-
-  return debouncedValue
-}
-
-// Usage
-const debouncedQuery = useDebounce(searchQuery, 500)
+class User(Base):
+    __tablename__ = "users"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 ```
 
-### State Management
+### Repository Pattern
 
-```typescript
-// ✅ GOOD: Proper state updates
-const [count, setCount] = useState(0)
+```python
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-// Functional update for state based on previous state
-setCount(prev => prev + 1)
-
-// ❌ BAD: Direct state reference
-setCount(count + 1)  // Can be stale in async scenarios
+class UserRepository:
+    def __init__(self, session: AsyncSession):
+        self.session = session
+    
+    async def find_by_id(self, user_id: int) -> User | None:
+        stmt = select(User).where(User.id == user_id)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+    
+    async def create(self, data: CreateUserInput) -> User:
+        user = User(**data.model_dump())
+        self.session.add(user)
+        await self.session.commit()
+        await self.session.refresh(user)
+        return user
 ```
 
-### Conditional Rendering
+## Code Formatting
 
-```typescript
-// ✅ GOOD: Clear conditional rendering
-{isLoading && <Spinner />}
-{error && <ErrorMessage error={error} />}
-{data && <DataDisplay data={data} />}
+使用 ruff + black (透過 poetry run)：
 
-// ❌ BAD: Ternary hell
-{isLoading ? <Spinner /> : error ? <ErrorMessage error={error} /> : data ? <DataDisplay data={data} /> : null}
-```
+```bash
+# Format code
+poetry run ruff format .
+poetry run black .
 
-## API Design Standards
+# Check lint
+poetry run ruff check .
 
-### REST API Conventions
-
-```
-GET    /api/markets              # List all markets
-GET    /api/markets/:id          # Get specific market
-POST   /api/markets              # Create new market
-PUT    /api/markets/:id          # Update market (full)
-PATCH  /api/markets/:id          # Update market (partial)
-DELETE /api/markets/:id          # Delete market
-
-# Query parameters for filtering
-GET /api/markets?status=active&limit=10&offset=0
-```
-
-### Response Format
-
-```typescript
-// ✅ GOOD: Consistent response structure
-interface ApiResponse<T> {
-  success: boolean
-  data?: T
-  error?: string
-  meta?: {
-    total: number
-    page: number
-    limit: number
-  }
-}
-
-// Success response
-return NextResponse.json({
-  success: true,
-  data: markets,
-  meta: { total: 100, page: 1, limit: 10 }
-})
-
-// Error response
-return NextResponse.json({
-  success: false,
-  error: 'Invalid request'
-}, { status: 400 })
-```
-
-### Input Validation
-
-```typescript
-import { z } from 'zod'
-
-// ✅ GOOD: Schema validation
-const CreateMarketSchema = z.object({
-  name: z.string().min(1).max(200),
-  description: z.string().min(1).max(2000),
-  endDate: z.string().datetime(),
-  categories: z.array(z.string()).min(1)
-})
-
-export async function POST(request: Request) {
-  const body = await request.json()
-
-  try {
-    const validated = CreateMarketSchema.parse(body)
-    // Proceed with validated data
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({
-        success: false,
-        error: 'Validation failed',
-        details: error.errors
-      }, { status: 400 })
-    }
-  }
-}
+# Auto-fix lint issues
+poetry run ruff check . --fix
 ```
 
 ## File Organization
@@ -306,215 +254,72 @@ export async function POST(request: Request) {
 ### Project Structure
 
 ```
-src/
-├── app/                    # Next.js App Router
-│   ├── api/               # API routes
-│   ├── markets/           # Market pages
-│   └── (auth)/           # Auth pages (route groups)
-├── components/            # React components
-│   ├── ui/               # Generic UI components
-│   ├── forms/            # Form components
-│   └── layouts/          # Layout components
-├── hooks/                # Custom React hooks
-├── lib/                  # Utilities and configs
-│   ├── api/             # API clients
-│   ├── utils/           # Helper functions
-│   └── constants/       # Constants
-├── types/                # TypeScript types
-└── styles/              # Global styles
-```
-
-### File Naming
-
-```
-components/Button.tsx          # PascalCase for components
-hooks/useAuth.ts              # camelCase with 'use' prefix
-lib/formatDate.ts             # camelCase for utilities
-types/market.types.ts         # camelCase with .types suffix
-```
-
-## Comments & Documentation
-
-### When to Comment
-
-```typescript
-// ✅ GOOD: Explain WHY, not WHAT
-// Use exponential backoff to avoid overwhelming the API during outages
-const delay = Math.min(1000 * Math.pow(2, retryCount), 30000)
-
-// Deliberately using mutation here for performance with large arrays
-items.push(newItem)
-
-// ❌ BAD: Stating the obvious
-// Increment counter by 1
-count++
-
-// Set name to user's name
-name = user.name
-```
-
-### JSDoc for Public APIs
-
-```typescript
-/**
- * Searches markets using semantic similarity.
- *
- * @param query - Natural language search query
- * @param limit - Maximum number of results (default: 10)
- * @returns Array of markets sorted by similarity score
- * @throws {Error} If OpenAI API fails or Redis unavailable
- *
- * @example
- * ```typescript
- * const results = await searchMarkets('election', 5)
- * console.log(results[0].name) // "Trump vs Biden"
- * ```
- */
-export async function searchMarkets(
-  query: string,
-  limit: number = 10
-): Promise<Market[]> {
-  // Implementation
-}
-```
-
-## Performance Best Practices
-
-### Memoization
-
-```typescript
-import { useMemo, useCallback } from 'react'
-
-// ✅ GOOD: Memoize expensive computations
-const sortedMarkets = useMemo(() => {
-  return markets.sort((a, b) => b.volume - a.volume)
-}, [markets])
-
-// ✅ GOOD: Memoize callbacks
-const handleSearch = useCallback((query: string) => {
-  setSearchQuery(query)
-}, [])
-```
-
-### Lazy Loading
-
-```typescript
-import { lazy, Suspense } from 'react'
-
-// ✅ GOOD: Lazy load heavy components
-const HeavyChart = lazy(() => import('./HeavyChart'))
-
-export function Dashboard() {
-  return (
-    <Suspense fallback={<Spinner />}>
-      <HeavyChart />
-    </Suspense>
-  )
-}
-```
-
-### Database Queries
-
-```typescript
-// ✅ GOOD: Select only needed columns
-const { data } = await supabase
-  .from('markets')
-  .select('id, name, status')
-  .limit(10)
-
-// ❌ BAD: Select everything
-const { data } = await supabase
-  .from('markets')
-  .select('*')
-```
-
-## Testing Standards
-
-### Test Structure (AAA Pattern)
-
-```typescript
-test('calculates similarity correctly', () => {
-  // Arrange
-  const vector1 = [1, 0, 0]
-  const vector2 = [0, 1, 0]
-
-  // Act
-  const similarity = calculateCosineSimilarity(vector1, vector2)
-
-  // Assert
-  expect(similarity).toBe(0)
-})
-```
-
-### Test Naming
-
-```typescript
-// ✅ GOOD: Descriptive test names
-test('returns empty array when no markets match query', () => { })
-test('throws error when OpenAI API key is missing', () => { })
-test('falls back to substring search when Redis unavailable', () => { })
-
-// ❌ BAD: Vague test names
-test('works', () => { })
-test('test search', () => { })
+app/
+├── __init__.py
+├── main.py                 # FastAPI application factory
+├── config.py               # Settings with pydantic-settings
+├── models.py               # SQLAlchemy models
+├── exceptions.py           # ServiceError and custom exceptions
+├── contracts.py            # AIMateErrorCode, response types
+├── routers/                # FastAPI routers
+├── services/               # Business logic
+├── repositories/           # Data access layer
+├── core/                   # Core infrastructure
+└── utils/                  # Helper functions
 ```
 
 ## Code Smell Detection
 
-Watch for these anti-patterns:
-
 ### 1. Long Functions
-```typescript
-// ❌ BAD: Function > 50 lines
-function processMarketData() {
-  // 100 lines of code
-}
+```python
+# ❌ BAD: Function > 50 lines
+def process_market_data():
+    # 100 lines of code
+    ...
 
-// ✅ GOOD: Split into smaller functions
-function processMarketData() {
-  const validated = validateData()
-  const transformed = transformData(validated)
-  return saveData(transformed)
-}
+# ✅ GOOD: Split into smaller functions
+def process_market_data():
+    validated = validate_data()
+    transformed = transform_data(validated)
+    return save_data(transformed)
 ```
 
 ### 2. Deep Nesting
-```typescript
-// ❌ BAD: 5+ levels of nesting
-if (user) {
-  if (user.isAdmin) {
-    if (market) {
-      if (market.isActive) {
-        if (hasPermission) {
-          // Do something
-        }
-      }
-    }
-  }
-}
+```python
+# ❌ BAD: 5+ levels of nesting
+if user:
+    if user.is_admin:
+        if market:
+            if market.is_active:
+                ...
 
-// ✅ GOOD: Early returns
-if (!user) return
-if (!user.isAdmin) return
-if (!market) return
-if (!market.isActive) return
-if (!hasPermission) return
+# ✅ GOOD: Early returns with ServiceError
+if not user:
+    raise ServiceError(...)
+if not user.is_admin:
+    raise ServiceError(...)
+if not market:
+    raise ServiceError(...)
+if not market.is_active:
+    raise ServiceError(...)
 
-// Do something
+# Do something
 ```
 
 ### 3. Magic Numbers
-```typescript
-// ❌ BAD: Unexplained numbers
-if (retryCount > 3) { }
-setTimeout(callback, 500)
+```python
+# ❌ BAD: Unexplained numbers
+if retry_count > 3:
+    ...
+await asyncio.sleep(0.5)
 
-// ✅ GOOD: Named constants
-const MAX_RETRIES = 3
-const DEBOUNCE_DELAY_MS = 500
+# ✅ GOOD: Named constants
+MAX_RETRIES = 3
+DEBOUNCE_DELAY_SECONDS = 0.5
 
-if (retryCount > MAX_RETRIES) { }
-setTimeout(callback, DEBOUNCE_DELAY_MS)
+if retry_count > MAX_RETRIES:
+    ...
+await asyncio.sleep(DEBOUNCE_DELAY_SECONDS)
 ```
 
 **Remember**: Code quality is not negotiable. Clear, maintainable code enables rapid development and confident refactoring.

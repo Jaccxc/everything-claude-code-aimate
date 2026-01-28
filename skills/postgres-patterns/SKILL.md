@@ -1,19 +1,44 @@
 ---
 name: postgres-patterns
-description: PostgreSQL database patterns for query optimization, schema design, indexing, and security. Based on Supabase best practices.
+description: PostgreSQL database patterns for query optimization, schema design, indexing, and security. Based on SQLAlchemy async best practices.
 ---
 
 # PostgreSQL Patterns
 
-Quick reference for PostgreSQL best practices. For detailed guidance, use the `database-reviewer` agent.
+Quick reference for PostgreSQL best practices with SQLAlchemy async. For detailed guidance, use the `database-reviewer` agent.
 
 ## When to Activate
 
-- Writing SQL queries or migrations
+- Writing SQL queries or Alembic migrations
 - Designing database schemas
 - Troubleshooting slow queries
 - Implementing Row Level Security
 - Setting up connection pooling
+
+## SQLAlchemy Async Setup
+
+```python
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
+
+class Base(DeclarativeBase):
+    pass
+
+engine = create_async_engine(
+    "postgresql+asyncpg://user:pass@localhost:5432/db",
+    pool_size=20,
+    max_overflow=30,
+    pool_timeout=30,
+    pool_recycle=3600,
+    echo=False
+)
+
+async_session_maker = sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
+```
 
 ## Quick Reference
 
@@ -38,6 +63,29 @@ Quick reference for PostgreSQL best practices. For detailed guidance, use the `d
 | Money | `numeric(10,2)` | `float` |
 | Flags | `boolean` | `varchar`, `int` |
 
+### Alembic Migration Example
+
+```python
+# alembic/versions/xxx_add_users_table.py
+from alembic import op
+import sqlalchemy as sa
+
+def upgrade() -> None:
+    op.create_table(
+        'users',
+        sa.Column('id', sa.BigInteger(), nullable=False),
+        sa.Column('email', sa.String(255), nullable=False),
+        sa.Column('name', sa.String(100), nullable=False),
+        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index('ix_users_email', 'users', ['email'], unique=True)
+
+def downgrade() -> None:
+    op.drop_index('ix_users_email', table_name='users')
+    op.drop_table('users')
+```
+
 ### Common Patterns
 
 **Composite Index Order:**
@@ -59,12 +107,6 @@ CREATE INDEX idx ON users (email) WHERE deleted_at IS NULL;
 -- Smaller index, only includes active users
 ```
 
-**RLS Policy (Optimized):**
-```sql
-CREATE POLICY policy ON orders
-  USING ((SELECT auth.uid()) = user_id);  -- Wrap in SELECT!
-```
-
 **UPSERT:**
 ```sql
 INSERT INTO settings (user_id, key, value)
@@ -73,10 +115,23 @@ ON CONFLICT (user_id, key)
 DO UPDATE SET value = EXCLUDED.value;
 ```
 
-**Cursor Pagination:**
-```sql
-SELECT * FROM products WHERE id > $last_id ORDER BY id LIMIT 20;
--- O(1) vs OFFSET which is O(n)
+**Cursor Pagination (SQLAlchemy):**
+```python
+from sqlalchemy import select
+
+async def get_paginated_users(
+    session: AsyncSession,
+    last_id: int = 0,
+    limit: int = 20
+) -> list[User]:
+    stmt = (
+        select(User)
+        .where(User.id > last_id)
+        .order_by(User.id)
+        .limit(limit)
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
 ```
 
 **Queue Processing:**
@@ -135,12 +190,50 @@ REVOKE ALL ON SCHEMA public FROM public;
 SELECT pg_reload_conf();
 ```
 
+## SQLAlchemy Best Practices
+
+### Eager Loading to Prevent N+1
+
+```python
+from sqlalchemy.orm import selectinload
+
+# ✅ GOOD: Eager load relationships
+stmt = (
+    select(User)
+    .options(selectinload(User.orders))
+    .where(User.id == user_id)
+)
+
+# ❌ BAD: Lazy loading causes N+1
+users = await session.execute(select(User))
+for user in users.scalars():
+    print(user.orders)  # N additional queries!
+```
+
+### Batch Operations
+
+```python
+from sqlalchemy import insert
+
+# ✅ GOOD: Bulk insert
+stmt = insert(User).values([
+    {"email": "a@test.com", "name": "A"},
+    {"email": "b@test.com", "name": "B"},
+])
+await session.execute(stmt)
+
+# ❌ BAD: One-by-one inserts
+for data in users_data:
+    user = User(**data)
+    session.add(user)
+    await session.commit()  # Commits each individually
+```
+
 ## Related
 
 - Agent: `database-reviewer` - Full database review workflow
-- Skill: `clickhouse-io` - ClickHouse analytics patterns
 - Skill: `backend-patterns` - API and backend patterns
 
 ---
 
-*Based on [Supabase Agent Skills](https://github.com/supabase/agent-skills) (MIT License)*
+*Based on PostgreSQL and SQLAlchemy best practices*

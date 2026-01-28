@@ -1,424 +1,268 @@
-# Everything Claude Code
+# Everything Claude Code - AIMate Edition
 
-[![Stars](https://img.shields.io/github/stars/affaan-m/everything-claude-code?style=flat)](https://github.com/affaan-m/everything-claude-code/stargazers)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![Shell](https://img.shields.io/badge/-Shell-4EAA25?logo=gnu-bash&logoColor=white)
-![TypeScript](https://img.shields.io/badge/-TypeScript-3178C6?logo=typescript&logoColor=white)
-![Go](https://img.shields.io/badge/-Go-00ADD8?logo=go&logoColor=white)
+![Python](https://img.shields.io/badge/-Python%203.11-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/-FastAPI-009688?logo=fastapi&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/-PostgreSQL-4169E1?logo=postgresql&logoColor=white)
 ![Markdown](https://img.shields.io/badge/-Markdown-000000?logo=markdown&logoColor=white)
 
-**The complete collection of Claude Code configs from an Anthropic hackathon winner.**
+**Claude Code 完整配置集，專為 AIMate 團隊的 Python/FastAPI 技術棧優化。**
 
-Production-ready agents, skills, hooks, commands, rules, and MCP configurations evolved over 10+ months of intensive daily use building real products.
-
----
-
-## The Guides
-
-This repo is the raw code only. The guides explain everything.
-
-<table>
-<tr>
-<td width="50%">
-<a href="https://x.com/affaanmustafa/status/2012378465664745795">
-<img src="https://github.com/user-attachments/assets/1a471488-59cc-425b-8345-5245c7efbcef" alt="The Shorthand Guide to Everything Claude Code" />
-</a>
-</td>
-<td width="50%">
-<a href="https://x.com/affaanmustafa/status/2014040193557471352">
-<img src="https://github.com/user-attachments/assets/c9ca43bc-b149-427f-b551-af6840c368f0" alt="The Longform Guide to Everything Claude Code" />
-</a>
-</td>
-</tr>
-<tr>
-<td align="center"><b>Shorthand Guide</b><br/>Setup, foundations, philosophy. <b>Read this first.</b></td>
-<td align="center"><b>Longform Guide</b><br/>Token optimization, memory persistence, evals, parallelization.</td>
-</tr>
-</table>
-
-| Topic | What You'll Learn |
-|-------|-------------------|
-| Token Optimization | Model selection, system prompt slimming, background processes |
-| Memory Persistence | Hooks that save/load context across sessions automatically |
-| Continuous Learning | Auto-extract patterns from sessions into reusable skills |
-| Verification Loops | Checkpoint vs continuous evals, grader types, pass@k metrics |
-| Parallelization | Git worktrees, cascade method, when to scale instances |
-| Subagent Orchestration | The context problem, iterative retrieval pattern |
+Production-ready agents, skills, hooks, commands, rules，適用於 Python 3.11、FastAPI、Pydantic、SQLAlchemy、PostgreSQL 開發環境。
 
 ---
 
-## Cross-Platform Support
+## 技術棧
 
-This plugin now fully supports **Windows, macOS, and Linux**. All hooks and scripts have been rewritten in Node.js for maximum compatibility.
+- **語言**: Python 3.11+
+- **Web 框架**: FastAPI
+- **資料驗證**: Pydantic, pydantic-ai
+- **資料庫**: PostgreSQL + SQLAlchemy (async) + Alembic
+- **程式碼品質**: Ruff + Black (透過 poetry run)
+- **測試**: pytest, pytest-asyncio
+- **依賴管理**: Poetry
+- **CI/CD**: GitLab
 
-### Package Manager Detection
+---
 
-The plugin automatically detects your preferred package manager (npm, pnpm, yarn, or bun) with the following priority:
+## 跨平台支援
 
-1. **Environment variable**: `CLAUDE_PACKAGE_MANAGER`
-2. **Project config**: `.claude/package-manager.json`
-3. **package.json**: `packageManager` field
-4. **Lock file**: Detection from package-lock.json, yarn.lock, pnpm-lock.yaml, or bun.lockb
-5. **Global config**: `~/.claude/package-manager.json`
-6. **Fallback**: First available package manager
+完整支援 **Windows、macOS 和 Linux**。所有 hooks 和 scripts 都使用 Python 撰寫，確保跨平台相容性。
 
-To set your preferred package manager:
+---
+
+## 目錄結構
+
+```
+everything-claude-code-aimate/
+├── agents/           # 專業化子代理
+│   ├── planner.md           # 功能實作規劃
+│   ├── architect.md         # 系統設計決策
+│   ├── tdd-guide.md         # pytest TDD 開發
+│   ├── code-reviewer.md     # Python/FastAPI 程式碼審查
+│   ├── security-reviewer.md # 安全漏洞分析
+│   ├── build-error-resolver.md  # Python 建置錯誤修復
+│   ├── e2e-runner.md        # Playwright E2E 測試
+│   ├── refactor-cleaner.md  # 死碼清理
+│   ├── doc-updater.md       # 文件同步
+│   └── database-reviewer.md # PostgreSQL 資料庫審查
+│
+├── skills/           # 工作流程定義
+│   ├── coding-standards/    # Python 最佳實踐
+│   ├── backend-patterns/    # FastAPI/Pydantic 模式
+│   ├── frontend-patterns/   # React 前端模式
+│   ├── postgres-patterns/   # PostgreSQL/SQLAlchemy 模式
+│   ├── continuous-learning/ # 自動從 session 學習
+│   ├── continuous-learning-v2/  # 進階 instinct 學習
+│   ├── tdd-workflow/        # pytest TDD 方法論
+│   ├── security-review/     # 安全檢查清單
+│   └── verification-loop/   # 驗證迴圈
+│
+├── commands/         # 斜線指令
+│   ├── tdd.md              # /tdd - pytest TDD 開發
+│   ├── plan.md             # /plan - 實作規劃
+│   ├── e2e.md              # /e2e - E2E 測試生成
+│   ├── code-review.md      # /code-review - 品質審查
+│   ├── build-fix.md        # /build-fix - 修復 lint/type 錯誤
+│   ├── refactor-clean.md   # /refactor-clean - 死碼移除
+│   ├── test-coverage.md    # /test-coverage - 覆蓋率分析
+│   └── learn.md            # /learn - 提取模式
+│
+├── rules/            # 永遠遵循的準則
+│   ├── security.md         # 強制安全檢查
+│   ├── coding-style.md     # Python/Pydantic 風格
+│   ├── testing.md          # pytest TDD, 80% 覆蓋率
+│   ├── patterns.md         # AIMateAPIResponse 模式
+│   ├── git-workflow.md     # Commit 格式, PR 流程
+│   ├── agents.md           # 何時委派給子代理
+│   └── performance.md      # 模型選擇, context 管理
+│
+├── hooks/            # 觸發式自動化
+│   └── hooks.json          # 所有 hooks 設定
+│
+├── scripts/          # 跨平台 Python scripts
+│   ├── lib/
+│   │   └── utils.py        # 跨平台工具函式
+│   └── hooks/              # Hook 實作
+│       ├── check_print.py
+│       ├── suggest_compact.py
+│       ├── session_start.py
+│       └── session_end.py
+│
+├── example-ai-mate-contracts/     # API 回應契約範例
+│   └── aimate/contracts/
+│       ├── responses.py    # AIMateAPIResponse
+│       └── vben.py         # VbenResponse (前端用)
+│
+└── example-project-operator-intelligence/  # 範例專案參考
+```
+
+---
+
+## API 回應格式
+
+### AIMateAPIResponse (預設)
+
+所有 API endpoint 都應使用 `AIMateAPIResponse`：
+
+```python
+from aimate.contracts import AIMateAPIResponse, AIMateErrorResponse
+
+@router.get("/users/{user_id}")
+async def get_user(user_id: str) -> AIMateAPIResponse[User]:
+    user = await user_service.get_by_id(user_id)
+    if not user:
+        return AIMateAPIResponse(
+            error=AIMateErrorResponse(
+                code="USER_NOT_FOUND",
+                message=f"User {user_id} not found"
+            )
+        )
+    return AIMateAPIResponse(data=user)
+```
+
+### VbenResponse (僅前端 endpoint)
+
+只有前端專用的 endpoint 才使用 `VbenResponse`：
+
+```python
+@router.get("/web/dashboard")
+async def get_dashboard() -> VbenResponse[DashboardData]:
+    return VbenResponse(code=0, message="ok", data=data)
+```
+
+---
+
+## 安裝
+
+### 手動安裝
 
 ```bash
-# Via environment variable
-export CLAUDE_PACKAGE_MANAGER=pnpm
+# Clone repo
+git clone <repo-url> everything-claude-code-aimate
 
-# Via global config
-node scripts/setup-package-manager.js --global pnpm
+# 複製 agents
+cp everything-claude-code-aimate/agents/*.md ~/.claude/agents/
 
-# Via project config
-node scripts/setup-package-manager.js --project bun
+# 複製 rules
+cp everything-claude-code-aimate/rules/*.md ~/.claude/rules/
 
-# Detect current setting
-node scripts/setup-package-manager.js --detect
+# 複製 commands
+cp everything-claude-code-aimate/commands/*.md ~/.claude/commands/
+
+# 複製 skills
+cp -r everything-claude-code-aimate/skills/* ~/.claude/skills/
 ```
 
-Or use the `/setup-pm` command in Claude Code.
+### 設定 Hooks
+
+將 `hooks/hooks.json` 的內容複製到你的 `~/.claude/settings.json`。
 
 ---
 
-## What's Inside
+## 核心概念
 
-This repo is a **Claude Code plugin** - install it directly or copy components manually.
+### Agents (子代理)
 
-```
-everything-claude-code/
-|-- .claude-plugin/   # Plugin and marketplace manifests
-|   |-- plugin.json         # Plugin metadata and component paths
-|   |-- marketplace.json    # Marketplace catalog for /plugin marketplace add
-|
-|-- agents/           # Specialized subagents for delegation
-|   |-- planner.md           # Feature implementation planning
-|   |-- architect.md         # System design decisions
-|   |-- tdd-guide.md         # Test-driven development
-|   |-- code-reviewer.md     # Quality and security review
-|   |-- security-reviewer.md # Vulnerability analysis
-|   |-- build-error-resolver.md
-|   |-- e2e-runner.md        # Playwright E2E testing
-|   |-- refactor-cleaner.md  # Dead code cleanup
-|   |-- doc-updater.md       # Documentation sync
-|   |-- go-reviewer.md       # Go code review (NEW)
-|   |-- go-build-resolver.md # Go build error resolution (NEW)
-|
-|-- skills/           # Workflow definitions and domain knowledge
-|   |-- coding-standards/           # Language best practices
-|   |-- backend-patterns/           # API, database, caching patterns
-|   |-- frontend-patterns/          # React, Next.js patterns
-|   |-- continuous-learning/        # Auto-extract patterns from sessions (Longform Guide)
-|   |-- continuous-learning-v2/     # Instinct-based learning with confidence scoring
-|   |-- iterative-retrieval/        # Progressive context refinement for subagents
-|   |-- strategic-compact/          # Manual compaction suggestions (Longform Guide)
-|   |-- tdd-workflow/               # TDD methodology
-|   |-- security-review/            # Security checklist
-|   |-- eval-harness/               # Verification loop evaluation (Longform Guide)
-|   |-- verification-loop/          # Continuous verification (Longform Guide)
-|   |-- golang-patterns/            # Go idioms and best practices (NEW)
-|   |-- golang-testing/             # Go testing patterns, TDD, benchmarks (NEW)
-|
-|-- commands/         # Slash commands for quick execution
-|   |-- tdd.md              # /tdd - Test-driven development
-|   |-- plan.md             # /plan - Implementation planning
-|   |-- e2e.md              # /e2e - E2E test generation
-|   |-- code-review.md      # /code-review - Quality review
-|   |-- build-fix.md        # /build-fix - Fix build errors
-|   |-- refactor-clean.md   # /refactor-clean - Dead code removal
-|   |-- learn.md            # /learn - Extract patterns mid-session (Longform Guide)
-|   |-- checkpoint.md       # /checkpoint - Save verification state (Longform Guide)
-|   |-- verify.md           # /verify - Run verification loop (Longform Guide)
-|   |-- setup-pm.md         # /setup-pm - Configure package manager
-|   |-- go-review.md        # /go-review - Go code review (NEW)
-|   |-- go-test.md          # /go-test - Go TDD workflow (NEW)
-|   |-- go-build.md         # /go-build - Fix Go build errors (NEW)
-|
-|-- rules/            # Always-follow guidelines (copy to ~/.claude/rules/)
-|   |-- security.md         # Mandatory security checks
-|   |-- coding-style.md     # Immutability, file organization
-|   |-- testing.md          # TDD, 80% coverage requirement
-|   |-- git-workflow.md     # Commit format, PR process
-|   |-- agents.md           # When to delegate to subagents
-|   |-- performance.md      # Model selection, context management
-|
-|-- hooks/            # Trigger-based automations
-|   |-- hooks.json                # All hooks config (PreToolUse, PostToolUse, Stop, etc.)
-|   |-- memory-persistence/       # Session lifecycle hooks (Longform Guide)
-|   |-- strategic-compact/        # Compaction suggestions (Longform Guide)
-|
-|-- scripts/          # Cross-platform Node.js scripts (NEW)
-|   |-- lib/                     # Shared utilities
-|   |   |-- utils.js             # Cross-platform file/path/system utilities
-|   |   |-- package-manager.js   # Package manager detection and selection
-|   |-- hooks/                   # Hook implementations
-|   |   |-- session-start.js     # Load context on session start
-|   |   |-- session-end.js       # Save state on session end
-|   |   |-- pre-compact.js       # Pre-compaction state saving
-|   |   |-- suggest-compact.js   # Strategic compaction suggestions
-|   |   |-- evaluate-session.js  # Extract patterns from sessions
-|   |-- setup-package-manager.js # Interactive PM setup
-|
-|-- tests/            # Test suite (NEW)
-|   |-- lib/                     # Library tests
-|   |-- hooks/                   # Hook tests
-|   |-- run-all.js               # Run all tests
-|
-|-- contexts/         # Dynamic system prompt injection contexts (Longform Guide)
-|   |-- dev.md              # Development mode context
-|   |-- review.md           # Code review mode context
-|   |-- research.md         # Research/exploration mode context
-|
-|-- examples/         # Example configurations and sessions
-|   |-- CLAUDE.md           # Example project-level config
-|   |-- user-CLAUDE.md      # Example user-level config
-|
-|-- mcp-configs/      # MCP server configurations
-|   |-- mcp-servers.json    # GitHub, Supabase, Vercel, Railway, etc.
-|
-|-- marketplace.json  # Self-hosted marketplace config (for /plugin marketplace add)
-```
-
----
-
-## Ecosystem Tools
-
-### ecc.tools - Skill Creator
-
-Automatically generate Claude Code skills from your repository.
-
-[Install GitHub App](https://github.com/apps/skill-creator) | [ecc.tools](https://ecc.tools)
-
-Analyzes your repository and creates:
-- **SKILL.md files** - Ready-to-use skills for Claude Code
-- **Instinct collections** - For continuous-learning-v2
-- **Pattern extraction** - Learns from your commit history
-
-```bash
-# After installing the GitHub App, skills appear in:
-~/.claude/skills/generated/
-```
-
-Works seamlessly with the `continuous-learning-v2` skill for inherited instincts.
-
----
-
-## Installation
-
-### Option 1: Install as Plugin (Recommended)
-
-The easiest way to use this repo - install as a Claude Code plugin:
-
-```bash
-# Add this repo as a marketplace
-/plugin marketplace add affaan-m/everything-claude-code
-
-# Install the plugin
-/plugin install everything-claude-code@everything-claude-code
-```
-
-Or add directly to your `~/.claude/settings.json`:
-
-```json
-{
-  "extraKnownMarketplaces": {
-    "everything-claude-code": {
-      "source": {
-        "source": "github",
-        "repo": "affaan-m/everything-claude-code"
-      }
-    }
-  },
-  "enabledPlugins": {
-    "everything-claude-code@everything-claude-code": true
-  }
-}
-```
-
-This gives you instant access to all commands, agents, skills, and hooks.
-
----
-
-### Option 2: Manual Installation
-
-If you prefer manual control over what's installed:
-
-```bash
-# Clone the repo
-git clone https://github.com/affaan-m/everything-claude-code.git
-
-# Copy agents to your Claude config
-cp everything-claude-code/agents/*.md ~/.claude/agents/
-
-# Copy rules
-cp everything-claude-code/rules/*.md ~/.claude/rules/
-
-# Copy commands
-cp everything-claude-code/commands/*.md ~/.claude/commands/
-
-# Copy skills
-cp -r everything-claude-code/skills/* ~/.claude/skills/
-```
-
-#### Add hooks to settings.json
-
-Copy the hooks from `hooks/hooks.json` to your `~/.claude/settings.json`.
-
-#### Configure MCPs
-
-Copy desired MCP servers from `mcp-configs/mcp-servers.json` to your `~/.claude.json`.
-
-**Important:** Replace `YOUR_*_HERE` placeholders with your actual API keys.
-
----
-
-## Key Concepts
-
-### Agents
-
-Subagents handle delegated tasks with limited scope. Example:
+子代理處理特定範圍的委派任務：
 
 ```markdown
 ---
 name: code-reviewer
-description: Reviews code for quality, security, and maintainability
+description: Python/FastAPI 程式碼審查專家
 tools: ["Read", "Grep", "Glob", "Bash"]
 model: opus
 ---
 
-You are a senior code reviewer...
+You are a senior code reviewer for Python/FastAPI projects...
 ```
 
-### Skills
+### Skills (技能)
 
-Skills are workflow definitions invoked by commands or agents:
+技能是被指令或代理調用的工作流程定義：
 
 ```markdown
 # TDD Workflow
 
-1. Define interfaces first
-2. Write failing tests (RED)
-3. Implement minimal code (GREEN)
-4. Refactor (IMPROVE)
-5. Verify 80%+ coverage
+1. 定義 Pydantic 模型
+2. 寫失敗的測試 (RED)
+3. 實作最小程式碼 (GREEN)
+4. 重構 (IMPROVE)
+5. 驗證 80%+ 覆蓋率
 ```
 
-### Hooks
+### Hooks (鉤子)
 
-Hooks fire on tool events. Example - warn about console.log:
+Hooks 在工具事件時觸發。例如 - 警告 print() 語句：
 
 ```json
 {
-  "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.(ts|tsx|js|jsx)$\"",
+  "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.py$\"",
   "hooks": [{
     "type": "command",
-    "command": "#!/bin/bash\ngrep -n 'console\\.log' \"$file_path\" && echo '[Hook] Remove console.log' >&2"
+    "command": "python check_print.py"
   }]
 }
 ```
 
-### Rules
+### Rules (規則)
 
-Rules are always-follow guidelines. Keep them modular:
+規則是永遠遵循的準則：
 
 ```
 ~/.claude/rules/
-  security.md      # No hardcoded secrets
-  coding-style.md  # Immutability, file limits
-  testing.md       # TDD, coverage requirements
+  security.md      # 不可硬編碼密鑰
+  coding-style.md  # Pydantic, type hints
+  testing.md       # pytest TDD, 覆蓋率要求
+  patterns.md      # AIMateAPIResponse 模式
 ```
 
 ---
 
-## Running Tests
-
-The plugin includes a comprehensive test suite:
+## 常用指令
 
 ```bash
-# Run all tests
-node tests/run-all.js
+# 執行測試
+poetry run pytest
 
-# Run individual test files
-node tests/lib/utils.test.js
-node tests/lib/package-manager.test.js
-node tests/hooks/hooks.test.js
+# 帶覆蓋率測試
+poetry run pytest --cov=app --cov-report=html
+
+# Lint 檢查
+poetry run ruff check .
+
+# 格式化程式碼
+poetry run ruff format .
+
+# 執行開發伺服器
+poetry run uvicorn app.main:app --reload
+
+# 執行資料庫遷移
+alembic upgrade head
 ```
 
 ---
 
-## Contributing
+## 重要注意事項
 
-**Contributions are welcome and encouraged.**
+### Context Window 管理
 
-This repo is meant to be a community resource. If you have:
-- Useful agents or skills
-- Clever hooks
-- Better MCP configurations
-- Improved rules
+**重要:** 不要同時啟用所有 MCPs。你的 200k context window 在啟用太多工具時可能縮減到 70k。
 
-Please contribute! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+經驗法則：
+- 設定 20-30 個 MCPs
+- 每個專案啟用少於 10 個
+- 活躍工具少於 80 個
 
-### Ideas for Contributions
+### 客製化
 
-- Language-specific skills (Python, Rust patterns) - Go now included!
-- Framework-specific configs (Django, Rails, Laravel)
-- DevOps agents (Kubernetes, Terraform, AWS)
-- Testing strategies (different frameworks)
-- Domain-specific knowledge (ML, data engineering, mobile)
-
----
-
-## Background
-
-I've been using Claude Code since the experimental rollout. Won the Anthropic x Forum Ventures hackathon in Sep 2025 building [zenith.chat](https://zenith.chat) with [@DRodriguezFX](https://x.com/DRodriguezFX) - entirely using Claude Code.
-
-These configs are battle-tested across multiple production applications.
-
----
-
-## Important Notes
-
-### Context Window Management
-
-**Critical:** Don't enable all MCPs at once. Your 200k context window can shrink to 70k with too many tools enabled.
-
-Rule of thumb:
-- Have 20-30 MCPs configured
-- Keep under 10 enabled per project
-- Under 80 tools active
-
-Use `disabledMcpServers` in project config to disable unused ones.
-
-### Customization
-
-These configs work for my workflow. You should:
-1. Start with what resonates
-2. Modify for your stack
-3. Remove what you don't use
-4. Add your own patterns
-
----
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=affaan-m/everything-claude-code&type=Date)](https://star-history.com/#affaan-m/everything-claude-code&Date)
-
----
-
-## Links
-
-- **Shorthand Guide (Start Here):** [The Shorthand Guide to Everything Claude Code](https://x.com/affaanmustafa/status/2012378465664745795)
-- **Longform Guide (Advanced):** [The Longform Guide to Everything Claude Code](https://x.com/affaanmustafa/status/2014040193557471352)
-- **Follow:** [@affaanmustafa](https://x.com/affaanmustafa)
-- **zenith.chat:** [zenith.chat](https://zenith.chat)
+這些設定適用於 AIMate 團隊的工作流程。你應該：
+1. 從有用的部分開始
+2. 根據你的需求修改
+3. 移除不使用的部分
+4. 加入你自己的模式
 
 ---
 
 ## License
 
-MIT - Use freely, modify as needed, contribute back if you can.
-
----
-
-**Star this repo if it helps. Read both guides. Build something great.**
+MIT - 自由使用，按需修改。

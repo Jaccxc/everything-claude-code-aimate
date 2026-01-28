@@ -1,23 +1,39 @@
 # Coding Style
 
-## Immutability (CRITICAL)
+## Modern Type Hints (REQUIRED)
 
-ALWAYS create new objects, NEVER mutate:
+使用現代 Python 3.10+ 語法：
 
-```javascript
-// WRONG: Mutation
-function updateUser(user, name) {
-  user.name = name  // MUTATION!
-  return user
-}
+```python
+# ✅ CORRECT: Modern syntax
+name: str | None = None
+items: list[str] = []
+mapping: dict[str, int] = {}
 
-// CORRECT: Immutability
-function updateUser(user, name) {
-  return {
-    ...user,
-    name
-  }
-}
+# ❌ WRONG: Legacy typing
+from typing import Optional, List, Dict
+name: Optional[str] = None
+items: List[str] = []
+mapping: Dict[str, int] = {}
+```
+
+## Pydantic Models (REQUIRED for all data)
+
+```python
+from pydantic import BaseModel, Field
+
+class CreateUserInput(BaseModel):
+    email: str
+    name: str = Field(min_length=1, max_length=100)
+    age: int | None = None
+    tags: list[str] = []
+    metadata: dict[str, str] = {}
+
+class User(BaseModel):
+    id: str
+    email: str
+    name: str
+    created_at: datetime
 ```
 
 ## File Organization
@@ -25,36 +41,47 @@ function updateUser(user, name) {
 MANY SMALL FILES > FEW LARGE FILES:
 - High cohesion, low coupling
 - 200-400 lines typical, 800 max
-- Extract utilities from large components
+- Extract utilities from large modules
 - Organize by feature/domain, not by type
 
 ## Error Handling
 
-ALWAYS handle errors comprehensively:
+使用 ServiceError pattern：
 
-```typescript
-try {
-  const result = await riskyOperation()
-  return result
-} catch (error) {
-  console.error('Operation failed:', error)
-  throw new Error('Detailed user-friendly message')
-}
+```python
+from fastapi import status
+from app.exceptions import ServiceError
+from app.contracts import AIMateErrorCode
+
+async def get_user(user_id: str) -> User:
+    user = await user_repo.find_by_id(user_id)
+    if not user:
+        raise ServiceError(
+            message=f"User {user_id} not found",
+            status_code=status.HTTP_404_NOT_FOUND,
+            code=AIMateErrorCode.NOT_FOUND,
+        )
+    return user
 ```
 
 ## Input Validation
 
-ALWAYS validate user input:
+ALWAYS validate with Pydantic：
 
-```typescript
-import { z } from 'zod'
+```python
+from pydantic import BaseModel, Field, EmailStr, field_validator
 
-const schema = z.object({
-  email: z.string().email(),
-  age: z.number().int().min(0).max(150)
-})
-
-const validated = schema.parse(input)
+class UserInput(BaseModel):
+    email: EmailStr
+    age: int = Field(ge=0, le=150)
+    name: str = Field(min_length=1, max_length=100)
+    
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Name cannot be empty")
+        return v.strip()
 ```
 
 ## Code Quality Checklist
@@ -64,7 +91,24 @@ Before marking work complete:
 - [ ] Functions are small (<50 lines)
 - [ ] Files are focused (<800 lines)
 - [ ] No deep nesting (>4 levels)
-- [ ] Proper error handling
-- [ ] No console.log statements
+- [ ] Proper error handling with ServiceError
+- [ ] No print() statements (use logger)
 - [ ] No hardcoded values
-- [ ] No mutation (immutable patterns used)
+- [ ] Type hints on all functions (modern syntax)
+- [ ] Pydantic models for data validation
+
+## Code Formatting
+
+使用 ruff + black (透過 poetry run)：
+
+```bash
+# Format code
+poetry run ruff format .
+poetry run black .
+
+# Check lint
+poetry run ruff check .
+
+# Auto-fix lint issues
+poetry run ruff check . --fix
+```

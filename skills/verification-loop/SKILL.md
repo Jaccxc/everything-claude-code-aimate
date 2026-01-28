@@ -1,120 +1,137 @@
-# Verification Loop Skill
+---
+name: verification-loop
+description: Multi-layer verification ensuring code quality, correctness, and security. Run after any significant code changes.
+---
 
-A comprehensive verification system for Claude Code sessions.
+# Verification Loop
 
-## When to Use
+Multi-layer verification process ensuring code quality, correctness, and security. Run this after any significant code changes.
 
-Invoke this skill:
-- After completing a feature or significant code change
-- Before creating a PR
-- When you want to ensure quality gates pass
-- After refactoring
+## Prerequisites
 
-## Verification Phases
+Before starting verification:
+- Code changes are complete
+- All imports are available
+- Dependencies are installed
 
-### Phase 1: Build Verification
+## Layer 1: Static Analysis (Fast)
+
+Run quick checks that don't require execution:
+
 ```bash
-# Check if project builds
-npm run build 2>&1 | tail -20
-# OR
-pnpm build 2>&1 | tail -20
+# Lint check
+poetry run ruff check . --output-format=grouped
+
+# Format check  
+poetry run black --check .
+
+# If errors found, auto-fix
+poetry run ruff check . --fix
+poetry run black .
 ```
 
-If build fails, STOP and fix before continuing.
+## Layer 2: Unit Tests (Medium)
 
-### Phase 2: Type Check
+Run focused unit tests:
+
 ```bash
-# TypeScript projects
-npx tsc --noEmit 2>&1 | head -30
+# Run tests for changed files
+poetry run pytest tests/ -x --tb=short
 
-# Python projects
-pyright . 2>&1 | head -30
+# With coverage
+poetry run pytest tests/ --cov=app --cov-report=term-missing
 ```
 
-Report all type errors. Fix critical ones before continuing.
+## Layer 3: Integration Tests (Slower)
 
-### Phase 3: Lint Check
+Run broader integration tests:
+
 ```bash
-# JavaScript/TypeScript
-npm run lint 2>&1 | head -30
+# All tests including integration
+poetry run pytest -x
 
-# Python
-ruff check . 2>&1 | head -30
+# Specific integration tests
+poetry run pytest tests/integration/ -x
 ```
 
-### Phase 4: Test Suite
+## Layer 4: Manual Verification
+
+For changes that affect user experience:
+- Test in browser (for frontend changes)
+- Verify API responses (for backend changes)
+- Check database migrations (for schema changes)
+
+## Decision Tree
+
+```
+Start Verification
+        │
+        ▼
+┌───────────────┐
+│ ruff check    │ ──errors──▶ Fix and retry
+└───────────────┘
+        │ pass
+        ▼
+┌───────────────┐
+│ black --check │ ──errors──▶ Run black and retry
+└───────────────┘
+        │ pass
+        ▼
+┌───────────────┐
+│ pytest -x     │ ──fail────▶ Fix tests
+└───────────────┘
+        │ pass
+        ▼
+    ✓ VERIFIED
+```
+
+## Recovery Actions
+
+### Lint Errors
 ```bash
-# Run tests with coverage
-npm run test -- --coverage 2>&1 | tail -50
+# Auto-fix what's possible
+poetry run ruff check . --fix
 
-# Check coverage threshold
-# Target: 80% minimum
+# Manual fix remaining issues
 ```
 
-Report:
-- Total tests: X
-- Passed: X
-- Failed: X
-- Coverage: X%
+### Type Errors
+Review the error message and fix the type annotation or the code logic.
 
-### Phase 5: Security Scan
+### Test Failures
 ```bash
-# Check for secrets
-grep -rn "sk-" --include="*.ts" --include="*.js" . 2>/dev/null | head -10
-grep -rn "api_key" --include="*.ts" --include="*.js" . 2>/dev/null | head -10
-
-# Check for console.log
-grep -rn "console.log" --include="*.ts" --include="*.tsx" src/ 2>/dev/null | head -10
+# Run specific failing test with verbose output
+poetry run pytest tests/path/to/test.py::test_name -v --tb=long
 ```
 
-### Phase 6: Diff Review
+### Import Errors
 ```bash
-# Show what changed
-git diff --stat
-git diff HEAD~1 --name-only
+# Check if package is installed
+poetry show package-name
+
+# Add missing package
+poetry add package-name
 ```
 
-Review each changed file for:
-- Unintended changes
-- Missing error handling
-- Potential edge cases
+## Verification Checklist
 
-## Output Format
+Before marking work complete:
 
-After running all phases, produce a verification report:
+- [ ] `poetry run ruff check .` passes
+- [ ] `poetry run black --check .` passes
+- [ ] `poetry run pytest` passes
+- [ ] No print() statements in production code
+- [ ] Type hints on all functions (modern syntax)
+- [ ] Proper error handling with ServiceError
+- [ ] Coverage meets requirements (80%+)
 
-```
-VERIFICATION REPORT
-==================
+## Quick Reference
 
-Build:     [PASS/FAIL]
-Types:     [PASS/FAIL] (X errors)
-Lint:      [PASS/FAIL] (X warnings)
-Tests:     [PASS/FAIL] (X/Y passed, Z% coverage)
-Security:  [PASS/FAIL] (X issues)
-Diff:      [X files changed]
+| Check Type | Command | Time |
+|------------|---------|------|
+| Lint | `poetry run ruff check .` | ~1s |
+| Format | `poetry run black --check .` | ~1s |
+| Unit Tests | `poetry run pytest -x` | ~5-30s |
+| Coverage | `poetry run pytest --cov=app` | ~10-60s |
 
-Overall:   [READY/NOT READY] for PR
-
-Issues to Fix:
-1. ...
-2. ...
-```
-
-## Continuous Mode
-
-For long sessions, run verification every 15 minutes or after major changes:
-
-```markdown
-Set a mental checkpoint:
-- After completing each function
-- After finishing a component
-- Before moving to next task
-
-Run: /verify
-```
-
-## Integration with Hooks
-
-This skill complements PostToolUse hooks but provides deeper verification.
-Hooks catch issues immediately; this skill provides comprehensive review.
+**Remember**: Verification is faster than debugging production issues. Always run the full loop before committing.

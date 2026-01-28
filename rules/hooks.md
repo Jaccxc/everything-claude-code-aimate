@@ -1,46 +1,67 @@
-# Hooks System
+# Hooks
 
-## Hook Types
+Hooks trigger automation at specific events. See `/hooks/hooks.json` for the full configuration.
 
-- **PreToolUse**: Before tool execution (validation, parameter modification)
-- **PostToolUse**: After tool execution (auto-format, checks)
-- **Stop**: When session ends (final verification)
-
-## Current Hooks (in ~/.claude/settings.json)
+## Available Hooks
 
 ### PreToolUse
-- **tmux reminder**: Suggests tmux for long-running commands (npm, pnpm, yarn, cargo, etc.)
-- **git push review**: Opens Zed for review before push
-- **doc blocker**: Blocks creation of unnecessary .md/.txt files
+Runs before a tool executes. Can block or modify behavior.
+
+- **Documentation blocker**: Prevents creating random .md files outside of standard locations
+- **git push reminder**: Reminds to review changes before pushing
 
 ### PostToolUse
-- **PR creation**: Logs PR URL and GitHub Actions status
-- **Prettier**: Auto-formats JS/TS files after edit
-- **TypeScript check**: Runs tsc after editing .ts/.tsx files
-- **console.log warning**: Warns about console.log in edited files
+Runs after a tool completes. Good for formatting and validation.
+
+- **Auto-format Python**: Runs `poetry run ruff format` and `poetry run black` after editing Python files
+- **Ruff lint check**: Checks for lint errors after Python edits
+- **print() warning**: Warns about debug print statements
 
 ### Stop
-- **console.log audit**: Checks all modified files for console.log before session ends
+Runs when Claude stops responding.
 
-## Auto-Accept Permissions
+- **print() checker**: Scans modified Python files for print() statements
 
-Use with caution:
-- Enable for trusted, well-defined plans
-- Disable for exploratory work
-- Never use dangerously-skip-permissions flag
-- Configure `allowedTools` in `~/.claude.json` instead
+### SessionStart
+Runs when a new session begins.
 
-## TodoWrite Best Practices
+- **Context loader**: Loads previous session state if available
 
-Use TodoWrite tool to:
-- Track progress on multi-step tasks
-- Verify understanding of instructions
-- Enable real-time steering
-- Show granular implementation steps
+### SessionEnd
+Runs when session ends.
 
-Todo list reveals:
-- Out of order steps
-- Missing items
-- Extra unnecessary items
-- Wrong granularity
-- Misinterpreted requirements
+- **State persister**: Saves session state for next time
+
+### PreCompact
+Runs before context compaction.
+
+- **State saver**: Preserves important state before compaction
+
+## Creating New Hooks
+
+Add to `hooks/hooks.json`:
+
+```json
+{
+  "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.py$\"",
+  "hooks": [{
+    "type": "command",
+    "command": "python -c \"import sys; ...\""
+  }],
+  "description": "What this hook does"
+}
+```
+
+## Matcher Syntax
+
+- `tool == "Bash"` - Match specific tool
+- `tool_input.file_path matches "\\.py$"` - Regex on input
+- `tool_input.command matches "(poetry|pytest)"` - Command patterns
+- `*` - Match everything (use sparingly)
+
+## Best Practices
+
+1. **Keep hooks fast** - Long hooks slow down Claude
+2. **Fail gracefully** - Don't block on non-critical errors
+3. **Use stderr for messages** - stdout goes back to Claude
+4. **Test thoroughly** - Broken hooks can disrupt workflow

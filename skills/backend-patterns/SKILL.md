@@ -1,587 +1,345 @@
 ---
 name: backend-patterns
-description: Backend architecture patterns, API design, database optimization, and server-side best practices for Node.js, Express, and Next.js API routes.
+description: Backend architecture patterns for FastAPI, SQLAlchemy, PydanticAI, async operations, and API design best practices.
 ---
 
 # Backend Development Patterns
 
-Backend architecture patterns and best practices for scalable server-side applications.
+Backend architecture patterns and best practices for FastAPI-based applications.
 
 ## API Design Patterns
 
 ### RESTful API Structure
 
-```typescript
-// ✅ Resource-based URLs
-GET    /api/markets                 # List resources
-GET    /api/markets/:id             # Get single resource
-POST   /api/markets                 # Create resource
-PUT    /api/markets/:id             # Replace resource
-PATCH  /api/markets/:id             # Update resource
-DELETE /api/markets/:id             # Delete resource
+```python
+# Resource-based URLs
+# GET    /api/users                 # List resources
+# GET    /api/users/{id}            # Get single resource
+# POST   /api/users                 # Create resource
+# PUT    /api/users/{id}            # Replace resource
+# PATCH  /api/users/{id}            # Update resource
+# DELETE /api/users/{id}            # Delete resource
 
-// ✅ Query parameters for filtering, sorting, pagination
-GET /api/markets?status=active&sort=volume&limit=20&offset=0
+# Query parameters for filtering, sorting, pagination
+# GET /api/users?status=active&sort=created_at&limit=20&offset=0
+```
+
+### ServiceError Pattern (標準錯誤處理)
+
+在 endpoint 中使用 `raise ServiceError()` 處理錯誤：
+
+```python
+from fastapi import APIRouter, Depends, status
+from app.exceptions import ServiceError
+from app.contracts import AIMateErrorCode, VbenResponse
+
+router = APIRouter()
+
+@router.get("/tasks/{task_id}", response_model=VbenResponse[dict])
+async def get_task_detail(
+    task_id: str,
+    db: DatabaseSession,
+    current_user: CurrentUser,
+) -> VbenResponse[dict]:
+    """查詢 task 詳情。"""
+    from uuid import UUID as PyUUID
+
+    # 驗證格式
+    try:
+        task_uuid = PyUUID(task_id)
+    except ValueError:
+        raise ServiceError(
+            message="Invalid task_id format, expected UUID",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            code=AIMateErrorCode.BAD_REQUEST,
+            details={"field": "task_id"},
+        )
+
+    # 查詢資料
+    task_record = await service.get_task_binding(
+        db=db, user_id=current_user.id, task_id=task_uuid
+    )
+    if not task_record:
+        raise ServiceError(
+            message="Task not found or not owned by user",
+            status_code=status.HTTP_404_NOT_FOUND,
+            code=AIMateErrorCode.NOT_FOUND,
+        )
+
+    # 第三方 API 呼叫
+    client = get_client()
+    try:
+        external_detail = await client.get_task_detail(task_record.external_task_id)
+        return VbenResponse(
+            code=0,
+            message="ok",
+            data={
+                "local": {
+                    "id": str(task_record.id),
+                    "external_task_id": task_record.external_task_id,
+                    "created_at": task_record.created_at.isoformat(),
+                },
+                "external": external_detail,
+            },
+        )
+    except ClientError as e:
+        logger.warning(f"Third-party API error: {e.message}")
+        raise ServiceError(
+            message=f"Third-party API error: {e.message}",
+            status_code=e.status_code or status.HTTP_502_BAD_GATEWAY,
+            code="THIRD_PARTY_ERROR",
+            details={"source": "third_party_api", "original_error": e.message},
+        )
+    except Exception as e:
+        logger.exception(f"Unexpected error: {e}")
+        raise ServiceError(
+            message="Unexpected error",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            code="INTERNAL_ERROR",
+            details={"error_type": type(e).__name__},
+        )
 ```
 
 ### Repository Pattern
 
-```typescript
-// Abstract data access logic
-interface MarketRepository {
-  findAll(filters?: MarketFilters): Promise<Market[]>
-  findById(id: string): Promise<Market | null>
-  create(data: CreateMarketDto): Promise<Market>
-  update(id: string, data: UpdateMarketDto): Promise<Market>
-  delete(id: string): Promise<void>
-}
+```python
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-class SupabaseMarketRepository implements MarketRepository {
-  async findAll(filters?: MarketFilters): Promise<Market[]> {
-    let query = supabase.from('markets').select('*')
-
-    if (filters?.status) {
-      query = query.eq('status', filters.status)
-    }
-
-    if (filters?.limit) {
-      query = query.limit(filters.limit)
-    }
-
-    const { data, error } = await query
-
-    if (error) throw new Error(error.message)
-    return data
-  }
-
-  // Other methods...
-}
+class BaseRepository[T]:
+    def __init__(self, session: AsyncSession, model_class: type):
+        self.session = session
+        self.model_class = model_class
+    
+    async def find_all(
+        self, 
+        filters: dict | None = None,
+        limit: int = 100,
+        offset: int = 0
+    ) -> list[T]:
+        stmt = select(self.model_class).limit(limit).offset(offset)
+        if filters:
+            for key, value in filters.items():
+                stmt = stmt.where(getattr(self.model_class, key) == value)
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+    
+    async def find_by_id(self, id: str | int) -> T | None:
+        stmt = select(self.model_class).where(self.model_class.id == id)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+    
+    async def create(self, data: dict) -> T:
+        instance = self.model_class(**data)
+        self.session.add(instance)
+        await self.session.commit()
+        await self.session.refresh(instance)
+        return instance
+    
+    async def delete(self, id: str | int) -> None:
+        instance = await self.find_by_id(id)
+        if instance:
+            await self.session.delete(instance)
+            await self.session.commit()
 ```
 
 ### Service Layer Pattern
 
-```typescript
-// Business logic separated from data access
-class MarketService {
-  constructor(private marketRepo: MarketRepository) {}
-
-  async searchMarkets(query: string, limit: number = 10): Promise<Market[]> {
-    // Business logic
-    const embedding = await generateEmbedding(query)
-    const results = await this.vectorSearch(embedding, limit)
-
-    // Fetch full data
-    const markets = await this.marketRepo.findByIds(results.map(r => r.id))
-
-    // Sort by similarity
-    return markets.sort((a, b) => {
-      const scoreA = results.find(r => r.id === a.id)?.score || 0
-      const scoreB = results.find(r => r.id === b.id)?.score || 0
-      return scoreA - scoreB
-    })
-  }
-
-  private async vectorSearch(embedding: number[], limit: number) {
-    // Vector search implementation
-  }
-}
+```python
+class UserService:
+    def __init__(self, user_repo: UserRepository):
+        self.user_repo = user_repo
+    
+    async def create_user(self, data: CreateUserInput) -> User:
+        existing = await self.user_repo.find_by_email(data.email)
+        if existing:
+            raise ServiceError(
+                message="Email already registered",
+                status_code=status.HTTP_409_CONFLICT,
+                code=AIMateErrorCode.CONFLICT,
+            )
+        
+        hashed_password = hash_password(data.password)
+        return await self.user_repo.create({
+            **data.model_dump(exclude={"password"}),
+            "password_hash": hashed_password
+        })
+    
+    async def authenticate(self, email: str, password: str) -> User:
+        user = await self.user_repo.find_by_email(email)
+        if not user or not verify_password(password, user.password_hash):
+            raise ServiceError(
+                message="Invalid credentials",
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                code=AIMateErrorCode.UNAUTHORIZED,
+            )
+        return user
 ```
 
-### Middleware Pattern
+### Dependency Injection (FastAPI)
 
-```typescript
-// Request/response processing pipeline
-export function withAuth(handler: NextApiHandler): NextApiHandler {
-  return async (req, res) => {
-    const token = req.headers.authorization?.replace('Bearer ', '')
+```python
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
-    if (!token) {
-      return res.status(401).json({ error: 'Unauthorized' })
-    }
+async def get_db() -> AsyncSession:
+    async with async_session_maker() as session:
+        yield session
 
-    try {
-      const user = await verifyToken(token)
-      req.user = user
-      return handler(req, res)
-    } catch (error) {
-      return res.status(401).json({ error: 'Invalid token' })
-    }
-  }
-}
+async def get_user_repository(
+    db: AsyncSession = Depends(get_db)
+) -> UserRepository:
+    return UserRepository(db, User)
 
-// Usage
-export default withAuth(async (req, res) => {
-  // Handler has access to req.user
-})
+async def get_user_service(
+    repo: UserRepository = Depends(get_user_repository)
+) -> UserService:
+    return UserService(repo)
 ```
 
 ## Database Patterns
 
-### Query Optimization
+### Async SQLAlchemy Setup
 
-```typescript
-// ✅ GOOD: Select only needed columns
-const { data } = await supabase
-  .from('markets')
-  .select('id, name, status, volume')
-  .eq('status', 'active')
-  .order('volume', { ascending: false })
-  .limit(10)
+```python
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
 
-// ❌ BAD: Select everything
-const { data } = await supabase
-  .from('markets')
-  .select('*')
+def build_async_engine(database_url: str):
+    return create_async_engine(
+        database_url.replace("postgresql://", "postgresql+asyncpg://"),
+        pool_size=20,
+        max_overflow=30,
+        pool_timeout=30,
+        pool_recycle=3600,
+        echo=False
+    )
+
+async_session_maker = sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
 ```
 
-### N+1 Query Prevention
+### Query Optimization
 
-```typescript
-// ❌ BAD: N+1 query problem
-const markets = await getMarkets()
-for (const market of markets) {
-  market.creator = await getUser(market.creator_id)  // N queries
-}
+```python
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
-// ✅ GOOD: Batch fetch
-const markets = await getMarkets()
-const creatorIds = markets.map(m => m.creator_id)
-const creators = await getUsers(creatorIds)  // 1 query
-const creatorMap = new Map(creators.map(c => [c.id, c]))
+# ✅ GOOD: Select only needed columns
+stmt = (
+    select(User.id, User.name, User.email)
+    .where(User.status == "active")
+    .order_by(User.created_at.desc())
+    .limit(10)
+)
 
-markets.forEach(market => {
-  market.creator = creatorMap.get(market.creator_id)
-})
+# ✅ GOOD: Eager loading to prevent N+1
+stmt = (
+    select(User)
+    .options(selectinload(User.orders))
+    .where(User.id == user_id)
+)
+
+# ❌ BAD: Select everything
+stmt = select(User)
 ```
 
 ### Transaction Pattern
 
-```typescript
-async function createMarketWithPosition(
-  marketData: CreateMarketDto,
-  positionData: CreatePositionDto
-) {
-  // Use Supabase transaction
-  const { data, error } = await supabase.rpc('create_market_with_position', {
-    market_data: marketData,
-    position_data: positionData
-  })
-
-  if (error) throw new Error('Transaction failed')
-  return data
-}
-
-// SQL function in Supabase
-CREATE OR REPLACE FUNCTION create_market_with_position(
-  market_data jsonb,
-  position_data jsonb
-)
-RETURNS jsonb
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  -- Start transaction automatically
-  INSERT INTO markets VALUES (market_data);
-  INSERT INTO positions VALUES (position_data);
-  RETURN jsonb_build_object('success', true);
-EXCEPTION
-  WHEN OTHERS THEN
-    -- Rollback happens automatically
-    RETURN jsonb_build_object('success', false, 'error', SQLERRM);
-END;
-$$;
+```python
+async def create_order_with_items(
+    session: AsyncSession,
+    order_data: dict,
+    items_data: list[dict]
+) -> Order:
+    async with session.begin():
+        order = Order(**order_data)
+        session.add(order)
+        await session.flush()  # Get order.id
+        
+        for item_data in items_data:
+            item = OrderItem(order_id=order.id, **item_data)
+            session.add(item)
+        
+        return order
 ```
 
-## Caching Strategies
+## PydanticAI Patterns
 
-### Redis Caching Layer
+### Agent Setup
 
-```typescript
-class CachedMarketRepository implements MarketRepository {
-  constructor(
-    private baseRepo: MarketRepository,
-    private redis: RedisClient
-  ) {}
+```python
+from pydantic_ai import Agent
+from pydantic import BaseModel
 
-  async findById(id: string): Promise<Market | null> {
-    // Check cache first
-    const cached = await this.redis.get(`market:${id}`)
+class ConversationDeps(BaseModel):
+    user_id: str
+    session_id: str
 
-    if (cached) {
-      return JSON.parse(cached)
-    }
-
-    // Cache miss - fetch from database
-    const market = await this.baseRepo.findById(id)
-
-    if (market) {
-      // Cache for 5 minutes
-      await this.redis.setex(`market:${id}`, 300, JSON.stringify(market))
-    }
-
-    return market
-  }
-
-  async invalidateCache(id: string): Promise<void> {
-    await this.redis.del(`market:${id}`)
-  }
-}
-```
-
-### Cache-Aside Pattern
-
-```typescript
-async function getMarketWithCache(id: string): Promise<Market> {
-  const cacheKey = `market:${id}`
-
-  // Try cache
-  const cached = await redis.get(cacheKey)
-  if (cached) return JSON.parse(cached)
-
-  // Cache miss - fetch from DB
-  const market = await db.markets.findUnique({ where: { id } })
-
-  if (!market) throw new Error('Market not found')
-
-  // Update cache
-  await redis.setex(cacheKey, 300, JSON.stringify(market))
-
-  return market
-}
-```
-
-## Error Handling Patterns
-
-### Centralized Error Handler
-
-```typescript
-class ApiError extends Error {
-  constructor(
-    public statusCode: number,
-    public message: string,
-    public isOperational = true
-  ) {
-    super(message)
-    Object.setPrototypeOf(this, ApiError.prototype)
-  }
-}
-
-export function errorHandler(error: unknown, req: Request): Response {
-  if (error instanceof ApiError) {
-    return NextResponse.json({
-      success: false,
-      error: error.message
-    }, { status: error.statusCode })
-  }
-
-  if (error instanceof z.ZodError) {
-    return NextResponse.json({
-      success: false,
-      error: 'Validation failed',
-      details: error.errors
-    }, { status: 400 })
-  }
-
-  // Log unexpected errors
-  console.error('Unexpected error:', error)
-
-  return NextResponse.json({
-    success: false,
-    error: 'Internal server error'
-  }, { status: 500 })
-}
-
-// Usage
-export async function GET(request: Request) {
-  try {
-    const data = await fetchData()
-    return NextResponse.json({ success: true, data })
-  } catch (error) {
-    return errorHandler(error, request)
-  }
-}
-```
-
-### Retry with Exponential Backoff
-
-```typescript
-async function fetchWithRetry<T>(
-  fn: () => Promise<T>,
-  maxRetries = 3
-): Promise<T> {
-  let lastError: Error
-
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      return await fn()
-    } catch (error) {
-      lastError = error as Error
-
-      if (i < maxRetries - 1) {
-        // Exponential backoff: 1s, 2s, 4s
-        const delay = Math.pow(2, i) * 1000
-        await new Promise(resolve => setTimeout(resolve, delay))
-      }
-    }
-  }
-
-  throw lastError!
-}
-
-// Usage
-const data = await fetchWithRetry(() => fetchFromAPI())
-```
-
-## Authentication & Authorization
-
-### JWT Token Validation
-
-```typescript
-import jwt from 'jsonwebtoken'
-
-interface JWTPayload {
-  userId: string
-  email: string
-  role: 'admin' | 'user'
-}
-
-export function verifyToken(token: string): JWTPayload {
-  try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET!) as JWTPayload
-    return payload
-  } catch (error) {
-    throw new ApiError(401, 'Invalid token')
-  }
-}
-
-export async function requireAuth(request: Request) {
-  const token = request.headers.get('authorization')?.replace('Bearer ', '')
-
-  if (!token) {
-    throw new ApiError(401, 'Missing authorization token')
-  }
-
-  return verifyToken(token)
-}
-
-// Usage in API route
-export async function GET(request: Request) {
-  const user = await requireAuth(request)
-
-  const data = await getDataForUser(user.userId)
-
-  return NextResponse.json({ success: true, data })
-}
-```
-
-### Role-Based Access Control
-
-```typescript
-type Permission = 'read' | 'write' | 'delete' | 'admin'
-
-interface User {
-  id: string
-  role: 'admin' | 'moderator' | 'user'
-}
-
-const rolePermissions: Record<User['role'], Permission[]> = {
-  admin: ['read', 'write', 'delete', 'admin'],
-  moderator: ['read', 'write', 'delete'],
-  user: ['read', 'write']
-}
-
-export function hasPermission(user: User, permission: Permission): boolean {
-  return rolePermissions[user.role].includes(permission)
-}
-
-export function requirePermission(permission: Permission) {
-  return (handler: (request: Request, user: User) => Promise<Response>) => {
-    return async (request: Request) => {
-      const user = await requireAuth(request)
-
-      if (!hasPermission(user, permission)) {
-        throw new ApiError(403, 'Insufficient permissions')
-      }
-
-      return handler(request, user)
-    }
-  }
-}
-
-// Usage - HOF wraps the handler
-export const DELETE = requirePermission('delete')(
-  async (request: Request, user: User) => {
-    // Handler receives authenticated user with verified permission
-    return new Response('Deleted', { status: 200 })
-  }
+agent = Agent(
+    model="openai:gpt-4o",
+    deps_type=ConversationDeps,
+    output_type=str,
+    instructions="You are a helpful assistant..."
 )
 ```
 
-## Rate Limiting
+### Tool Definition
 
-### Simple In-Memory Rate Limiter
+```python
+from pydantic_ai import RunContext
 
-```typescript
-class RateLimiter {
-  private requests = new Map<string, number[]>()
-
-  async checkLimit(
-    identifier: string,
-    maxRequests: number,
-    windowMs: number
-  ): Promise<boolean> {
-    const now = Date.now()
-    const requests = this.requests.get(identifier) || []
-
-    // Remove old requests outside window
-    const recentRequests = requests.filter(time => now - time < windowMs)
-
-    if (recentRequests.length >= maxRequests) {
-      return false  // Rate limit exceeded
-    }
-
-    // Add current request
-    recentRequests.push(now)
-    this.requests.set(identifier, recentRequests)
-
-    return true
-  }
-}
-
-const limiter = new RateLimiter()
-
-export async function GET(request: Request) {
-  const ip = request.headers.get('x-forwarded-for') || 'unknown'
-
-  const allowed = await limiter.checkLimit(ip, 100, 60000)  // 100 req/min
-
-  if (!allowed) {
-    return NextResponse.json({
-      error: 'Rate limit exceeded'
-    }, { status: 429 })
-  }
-
-  // Continue with request
-}
+@agent.tool
+async def search_database(
+    ctx: RunContext[ConversationDeps],
+    query: str
+) -> str:
+    """Search the database for relevant information."""
+    results = await perform_search(ctx.deps.db_session, query)
+    return format_results(results)
 ```
 
-## Background Jobs & Queues
+## Background Tasks
 
-### Simple Queue Pattern
+### APScheduler Integration
 
-```typescript
-class JobQueue<T> {
-  private queue: T[] = []
-  private processing = false
+```python
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 
-  async add(job: T): Promise<void> {
-    this.queue.push(job)
+scheduler = AsyncIOScheduler()
 
-    if (!this.processing) {
-      this.process()
-    }
-  }
+async def sync_daily_reports():
+    """Sync daily reports from external API."""
+    async with async_session_maker() as session:
+        await data_sync_service.sync_reports(session)
 
-  private async process(): Promise<void> {
-    this.processing = true
-
-    while (this.queue.length > 0) {
-      const job = this.queue.shift()!
-
-      try {
-        await this.execute(job)
-      } catch (error) {
-        console.error('Job failed:', error)
-      }
-    }
-
-    this.processing = false
-  }
-
-  private async execute(job: T): Promise<void> {
-    // Job execution logic
-  }
-}
-
-// Usage for indexing markets
-interface IndexJob {
-  marketId: string
-}
-
-const indexQueue = new JobQueue<IndexJob>()
-
-export async function POST(request: Request) {
-  const { marketId } = await request.json()
-
-  // Add to queue instead of blocking
-  await indexQueue.add({ marketId })
-
-  return NextResponse.json({ success: true, message: 'Job queued' })
-}
+def setup_scheduler():
+    scheduler.add_job(
+        sync_daily_reports,
+        CronTrigger(hour=2, minute=0),
+        id="daily_reports_sync",
+        replace_existing=True
+    )
+    scheduler.start()
 ```
 
-## Logging & Monitoring
+## Logging
 
 ### Structured Logging
 
-```typescript
-interface LogContext {
-  userId?: string
-  requestId?: string
-  method?: string
-  path?: string
-  [key: string]: unknown
-}
+```python
+import logging
 
-class Logger {
-  log(level: 'info' | 'warn' | 'error', message: string, context?: LogContext) {
-    const entry = {
-      timestamp: new Date().toISOString(),
-      level,
-      message,
-      ...context
-    }
+logger = logging.getLogger(__name__)
 
-    console.log(JSON.stringify(entry))
-  }
-
-  info(message: string, context?: LogContext) {
-    this.log('info', message, context)
-  }
-
-  warn(message: string, context?: LogContext) {
-    this.log('warn', message, context)
-  }
-
-  error(message: string, error: Error, context?: LogContext) {
-    this.log('error', message, {
-      ...context,
-      error: error.message,
-      stack: error.stack
-    })
-  }
-}
-
-const logger = new Logger()
-
-// Usage
-export async function GET(request: Request) {
-  const requestId = crypto.randomUUID()
-
-  logger.info('Fetching markets', {
-    requestId,
-    method: 'GET',
-    path: '/api/markets'
-  })
-
-  try {
-    const markets = await fetchMarkets()
-    return NextResponse.json({ success: true, data: markets })
-  } catch (error) {
-    logger.error('Failed to fetch markets', error as Error, { requestId })
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
-  }
-}
+# Usage
+logger.info("User created", extra={"user_id": user.id, "email": user.email})
+logger.error("Failed to sync", exc_info=True, extra={"service": "data_sync"})
+logger.warning(f"Third-party API error: {e.message}")
 ```
 
-**Remember**: Backend patterns enable scalable, maintainable server-side applications. Choose patterns that fit your complexity level.
+**Remember**: Backend patterns enable scalable, maintainable server-side applications. Use ServiceError for all error handling. Choose patterns that fit your complexity level.
